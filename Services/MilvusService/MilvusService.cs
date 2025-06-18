@@ -59,6 +59,7 @@ namespace Milvus_Vector_Database_API.Services.MilvusService
                 }
 
                 await client.GetCollection(request.CollectionName).ReleaseAsync();
+                logger.LogInformation("ANN search completed successfully.");
 
                 return new BaseResponse(HttpStatusCode.OK, searchResults, "ANN search completed successfully.");
             }
