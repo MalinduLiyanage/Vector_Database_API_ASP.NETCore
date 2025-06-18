@@ -2,35 +2,21 @@
 using Microsoft.Extensions.Options;
 using Milvus.Client;
 using Milvus_Vector_Database_API.DTOs.Responses;
+using Milvus_Vector_Database_API.Settings;
 using StackExchange.Redis;
 
 namespace Milvus_Vector_Database_API.Services.MilvusService
 {
     public class MilvusService : IMilvusService
     {
-        private readonly IConfiguration settings;
         private readonly ILogger<MilvusService> logger;
+        private readonly MilvusSettings settings;
         private MilvusClient? client;
-        private readonly bool disposed = false;
 
-        private readonly string host;
-        private readonly int port;
-        private readonly string database;
-        private readonly string username;
-        private readonly string password;
-        private readonly int connectTimeout;
-        private readonly string serverVersion;
-
-        public MilvusService(IConfiguration configuration, ILogger<MilvusService> logger)
+        public MilvusService(IOptions<MilvusSettings> settings, ILogger<MilvusService> logger)
         {
             this.logger = logger;
-            this.host = configuration["MilvusSettings:Host"] ?? "localhost";
-            this.port = int.TryParse(configuration["MilvusSettings:Port"], out var port) ? port : 19530;
-            this.database = configuration["MilvusSettings:Database"] ?? "default";
-            this.username = configuration["MilvusSettings:Username"] ?? string.Empty;
-            this.password = configuration["MilvusSettings:Password"] ?? string.Empty;
-            this.connectTimeout = int.TryParse(configuration["MilvusSettings:ConnectTimeout"], out var timeout) ? timeout : 30000;
-            this.serverVersion = configuration["MilvusSettings:ServerVersion"] ?? "2.3.0";
+            this.settings = settings.Value;
         }
 
         public async Task<BaseResponse> ConnectAsync(CancellationToken cancellationToken = default)
@@ -42,17 +28,17 @@ namespace Milvus_Vector_Database_API.Services.MilvusService
                     await DisconnectAsync();
                 }
 
-                client = new MilvusClient(host, port, ssl: false);
+                client = new MilvusClient(settings.Host, settings.Port, ssl: false);
 
                 var collections = await client.ListCollectionsAsync(cancellationToken: cancellationToken);
 
-                logger.LogInformation("Successfully connected to Milvus at {Host}:{Port}", host, port);
+                logger.LogInformation("Successfully connected to Milvus at {Host}:{Port}", settings.Host, settings.Port);
 
                 return new BaseResponse(HttpStatusCode.OK, collections, "Connected successfully.");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to connect to Milvus at {Host}:{Port}", host, port);
+                logger.LogError(ex, "Failed to connect to Milvus at {Host}:{Port}", settings.Host, settings.Port);
                 return new BaseResponse(HttpStatusCode.InternalServerError, "No Data", $"Connection failed: {ex.Message}");
             }
         }
@@ -83,10 +69,12 @@ namespace Milvus_Vector_Database_API.Services.MilvusService
                 await client.ListCollectionsAsync();
                 return new BaseResponse(HttpStatusCode.OK, "No Data", "Client is connected.");
             }
-            catch
+            catch (Exception ex)
             {
+                logger.LogWarning(ex, "Client connection check failed.");
                 return new BaseResponse(HttpStatusCode.OK, "No Data", "Client is not connected.");
             }
         }
+
     }
 }

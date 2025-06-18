@@ -1,10 +1,14 @@
 using Milvus_Vector_Database_API.Services.MilvusService;
+using Milvus_Vector_Database_API.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+
+builder.Services.Configure<MilvusSettings>(
+    builder.Configuration.GetSection("MilvusSettings"));
 
 builder.Services.AddScoped<IMilvusService, MilvusService>();
 
